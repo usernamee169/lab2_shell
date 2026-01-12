@@ -9,11 +9,11 @@ python3 data.py
 
 # 2. Однопоточный анализ
 echo -e "\n2. Однопоточный анализ:"
-python3 single.py
+python3 onepotok.py
 
 # 3. Многопроцессный анализ  
 echo -e "\n3. Многопроцессный анализ:"
-python3 multiprocess.py
+python3 multiprocc.py
 
 # 4. Сравнение
 echo -e "\n4. Сравнение производительности:"
