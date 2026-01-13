@@ -14,22 +14,22 @@ def generate_data(num_students=50):
     
     for i in range(1, num_students + 1):
         student_id = f"ST{i:02d}"
-        grades = {}
+        pokazateli = {}
         
         for subject in subjects:
-            grades[subject] = {
+            pokazateli[subject] = {
                 "grade": random.randint(2, 5),
                 "absences": random.randint(0, 10),
                 "difficulty": random.randint(1, 10) 
             }
         
         # Общие показатели
-        avg_grade = sum(g[1]["grade"] for g in grades.items()) / len(subjects)
-        total_absences = sum(g[1]["absences"] for g in grades.items())
+        avg_grade = sum(g[1]["grade"] for g in pokazateli.items()) / len(subjects)
+        total_absences = sum(g[1]["absences"] for g in pokazateli.items())
         
         students[student_id] = {
             "name": f"Студент {i}",
-            "grades": grades,
+            "grades": pokazateli,
             "average": round(avg_grade, 2),
             "total_absences": total_absences
         }
