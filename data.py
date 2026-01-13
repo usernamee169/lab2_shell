@@ -13,7 +13,7 @@ def generate_data(num_students=50):
     students = {}
     
     for i in range(1, num_students + 1):
-        student_id = f"ST{i:03d}"
+        student_id = f"ST{i:02d}"
         grades = {}
         
         for subject in subjects:
