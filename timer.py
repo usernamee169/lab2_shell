@@ -1,146 +1,112 @@
 import json
 import time
 import threading
-from common_functions import *
+from datetime import datetime
 
+def load_data(filename="students.json"):
+    with open(filename, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
-def calculate_average_grade(grades):
-    """Расчет среднего балла студента"""
-    if not grades:
-        return 0
-    return sum(grades.values()) / len(grades)
-
-def calculate_total_missed(attendance):
-    """Расчет общего количества прогулов"""
-    total_missed = 0
-    for subject_data in attendance.values():
-        total_missed += subject_data['missed']
-    return total_missed
-
-def calculate_subject_difficulty(students_data):
-    """Расчет сложности предметов (средний балл по предмету)"""
-    subject_stats = {}
-    
-    for student_id, student_data in students_data['students'].items():
-        for subject, grade in student_data['grades'].items():
-            if subject not in subject_stats:
-                subject_stats[subject] = {'total_grade': 0, 'count': 0}
-            subject_stats[subject]['total_grade'] += grade
-            subject_stats[subject]['count'] += 1
-    
-    difficulty = {}
-    for subject, stats in subject_stats.items():
-        difficulty[subject] = stats['total_grade'] / stats['count']
-    
-    return difficulty
-
-def get_top10_by_grades(students_data):
-    """Топ 10 студентов по успеваемости"""
-    student_scores = []
-    
-    for student_id, student_data in students_data['students'].items():
-        avg_grade = calculate_average_grade(student_data['grades'])
-        student_scores.append({
-            'id': student_id,
-            'name': student_data['name'],
-            'average_grade': avg_grade
-        })
-    
-    # Сортировка по убыванию среднего балла
-    student_scores.sort(key=lambda x: x['average_grade'], reverse=True)
-    return student_scores[:10]
-
-def get_top10_by_absences(students_data):
-    """Топ 10 студентов по прогулам"""
-    student_absences = []
-    
-    for student_id, student_data in students_data['students'].items():
-        total_missed = calculate_total_missed(student_data['attendance'])
-        student_absences.append({
-            'id': student_id,
-            'name': student_data['name'],
-            'total_missed': total_missed
-        })
-    
-    # Сортировка по убыванию прогулов
-    student_absences.sort(key=lambda x: x['total_missed'], reverse=True)
-    return student_absences[:10]
-
-def get_top10_difficult_subjects(students_data):
-    """10 самых трудных предметов (самые низкие средние баллы)"""
-    difficulty = calculate_subject_difficulty(students_data)
-    
-    # Сортировка по возрастанию среднего балла (самые низкие = самые сложные)
-    sorted_difficulty = sorted(difficulty.items(), key=lambda x: x[1])
-    return sorted_difficulty[:10]
-
-
-
-
-
-
-def analyze_grades_timer(students_data, results):
-    """Анализ успеваемости с таймером"""
-    print("Таймер: Анализ успеваемости начат")
+def calculate_top_grades(data, results, lock):
+    print("[Таймер] Запуск расчета топ-10 по успеваемости...")
     time.sleep(0.5)  # Имитация задержки
-    results['grades'] = get_top10_by_grades(students_data)
-    print("Таймер: Анализ успеваемости завершен")
+    
+    students_avg = []
+    for student_id, student_data in data.items():
+        students_avg.append((student_id, student_data["name"], student_data["average"]))
+    
+    students_avg.sort(key=lambda x: x[2], reverse=True)
+    
+    with lock:
+        results["top_grades"] = students_avg[:10]
+    print("[Таймер] Расчет топ-10 по успеваемости завершен")
 
-def analyze_absences_timer(students_data, results):
-    """Анализ прогулов с таймером"""
-    print("Таймер: Анализ прогулов начат")
-    time.sleep(0.5)
-    results['absences'] = get_top10_by_absences(students_data)
-    print("Таймер: Анализ прогулов завершен")
+def calculate_top_absences(data, results, lock):
+    print("[Таймер] Запуск расчета топ-10 по прогулам...")
+    time.sleep(0.3)  # Имитация задержки
+    
+    students_absences = []
+    for student_id, student_data in data.items():
+        students_absences.append((student_id, student_data["name"], student_data["total_absences"]))
+    
+    students_absences.sort(key=lambda x: x[2], reverse=True)
+    
+    with lock:
+        results["top_absences"] = students_absences[:10]
+    print("[Таймер] Расчет топ-10 по прогулам завершен")
 
-def analyze_difficulty_timer(students_data, results):
-    """Анализ сложности предметов с таймером"""
-    print("Таймер: Анализ сложности предметов начат")
-    time.sleep(0.5)
-    results['difficulty'] = get_top10_difficult_subjects(students_data)
-    print("Таймер: Анализ сложности предметов завершен")
+def calculate_hardest_subjects(data, results, lock):
+    print("[Таймер] Запуск расчета самых трудных предметов...")
+    time.sleep(0.7)  # Имитация задержки
+    
+    subject_difficulty = {}
+    for student_id, student_data in data.items():
+        for subject, info in student_data["grades"].items():
+            if subject not in subject_difficulty:
+                subject_difficulty[subject] = []
+            subject_difficulty[subject].append(info["difficulty"])
+    
+    avg_difficulty = []
+    for subject, difficulties in subject_difficulty.items():
+        avg = sum(difficulties) / len(difficulties)
+        avg_difficulty.append((subject, round(avg, 2)))
+    
+    avg_difficulty.sort(key=lambda x: x[1], reverse=True)
+    
+    with lock:
+        results["hardest_subjects"] = avg_difficulty[:10]
+    print("[Таймер] Расчет самых трудных предметов завершен")
 
-def timer_based_analysis(filename='students_data.json'):
-    """Анализ с использованием таймеров"""
-    print("\n=== Анализ с таймерами ===")
+def print_results(results):
+    print("\n" + "="*60)
+    print("РЕЗУЛЬТАТЫ АНАЛИЗА УСПЕВАЕМОСТИ СТУДЕНТОВ (ТАЙМЕРЫ)")
+    print("="*60)
+    
+    print("\nТОП-10 ПО УСПЕВАЕМОСТИ (средний балл):")
+    print("-"*60)
+    for i, (student_id, name, avg) in enumerate(results["top_grades"], 1):
+        print(f"{i:2}. {name} ({student_id}): {avg:.2f}")
+    
+    print("\nТОП-10 ПО ПРОГУЛАМ (общее количество):")
+    print("-"*60)
+    for i, (student_id, name, absences) in enumerate(results["top_absences"], 1):
+        print(f"{i:2}. {name} ({student_id}): {absences} прогулов")
+    
+    print("\n10 САМЫХ ТРУДНЫХ ПРЕДМЕТОВ (средняя сложность):")
+    print("-"*60)
+    for i, (subject, difficulty) in enumerate(results["hardest_subjects"], 1):
+        print(f"{i:2}. {subject}: {difficulty:.2f}")
+
+def main():
+    print("Загрузка данных...")
+    data = load_data()
+    print(f"Загружено данных о {len(data)} студентах")
+    
+    print("\nВыполнение расчетов с использованием таймеров...")
     start_time = time.time()
     
-    # Загрузка данных
-    students_data = load_from_json(filename)
     results = {}
+    lock = threading.Lock()
     
-    # Создание и запуск потоков с таймерами
-    thread1 = threading.Timer(0.1, analyze_grades_timer, args=(students_data, results))
-    thread2 = threading.Timer(0.2, analyze_absences_timer, args=(students_data, results))
-    thread3 = threading.Timer(0.3, analyze_difficulty_timer, args=(students_data, results))
+    # Создаем и запускаем таймеры для каждой задачи
+    timer1 = threading.Timer(0.1, calculate_top_grades, args=(data, results, lock))
+    timer2 = threading.Timer(0.2, calculate_top_absences, args=(data, results, lock))
+    timer3 = threading.Timer(0.1, calculate_hardest_subjects, args=(data, results, lock))
     
-    thread1.start()
-    thread2.start()
-    thread3.start()
+    timer1.start()
+    timer2.start()
+    timer3.start()
     
-    # Ожидание завершения всех потоков
-    thread1.join()
-    thread2.join()
-    thread3.join()
+    # Ждем завершения всех таймеров
+    timer1.join()
+    timer2.join()
+    timer3.join()
     
     end_time = time.time()
+    execution_time = end_time - start_time
     
-    # Вывод результатов
-    print("\nТоп 10 по успеваемости:")
-    for i, student in enumerate(results['grades'], 1):
-        print(f"{i}. {student['name']}: {student['average_grade']:.2f}")
-    
-    print("\nТоп 10 по прогулам:")
-    for i, student in enumerate(results['absences'], 1):
-        print(f"{i}. {student['name']}: {student['total_missed']}%")
-    
-    print("\n10 самых трудных предметов:")
-    for i, (subject, avg_grade) in enumerate(results['difficulty'], 1):
-        print(f"{i}. {subject}: {avg_grade:.2f}")
-    
-    print(f"\nВремя выполнения: {end_time - start_time:.4f} секунд")
-    
-    return end_time - start_time
+    print_results(results)
+    print(f"\nВремя выполнения: {execution_time:.4f} секунд")
 
 if __name__ == "__main__":
-    timer_based_analysis()
+    main()
